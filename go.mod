@@ -11,6 +11,7 @@ require (
 	github.com/gen2brain/beeep v0.12.0
 	github.com/mattn/go-runewidth v0.0.27
 	github.com/rivo/uniseg v0.4.7
+	golang.org/x/mod v0.43.0
 )
 
 require (

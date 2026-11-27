@@ -524,6 +524,47 @@ func TestHeaderNamesThePRWhileInItsDiff(t *testing.T) {
 	}
 }
 
+func TestUpdateNoticeOnlyForNewerReleases(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	defer func(v string) { version = v }(version)
+	for _, c := range []struct {
+		running, latest string
+		want            bool
+	}{
+		{"0.1.0", "v0.2.0", true},
+		{"v0.2.0", "v0.2.0", false},
+		{"0.3.0", "v0.2.0", false},
+		{"0.0.0-SNAPSHOT-e00e453", "v0.2.0", false}, // snapshot builds never nag
+		{"dev", "v0.2.0", false},
+		{"0.1.0", "", false},
+	} {
+		version = c.running
+		if got := updateAvailable(releaseVersion(), c.latest); got != c.want {
+			t.Errorf("running %s, latest %q: got %v", c.running, c.latest, got)
+		}
+	}
+
+	version = "0.1.0"
+	m := newModel(time.Minute, "", false)
+	m.width = 120
+	if m.checkVersion() == nil {
+		t.Fatal("a release build that never checked should check")
+	}
+	if m.checkVersion() != nil {
+		t.Error("only one check at a time")
+	}
+	m = m.applyVersion(versionMsg{latest: "v0.2.0"})
+	if h := ansi.Strip(m.viewHeader()); !strings.Contains(h, "↑ v0.2.0 available") {
+		t.Errorf("header should announce the update: %q", h)
+	}
+	if m.checkVersion() != nil {
+		t.Error("the next check should wait a day")
+	}
+	if f := ansi.Strip(m.viewFooter()); !strings.HasSuffix(f, " v0.1.0 ") || ansi.StringWidth(f) != m.width {
+		t.Errorf("the footer should end with the version at the right edge: %q", f)
+	}
+}
+
 func lineCommentModel(t *testing.T, split bool) model {
 	t.Helper()
 	t.Setenv("XDG_STATE_HOME", t.TempDir())

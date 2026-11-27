@@ -27,6 +27,10 @@ type state struct {
 
 	// Inline comments not yet submitted, per PR URL.
 	Drafts map[string][]draft `json:"drafts,omitempty"`
+
+	// The latest lgtm release, checked at most once a day.
+	LatestVersion  string    `json:"latestVersion,omitempty"`
+	VersionChecked time.Time `json:"versionChecked,omitempty"`
 }
 
 func statePath() string {

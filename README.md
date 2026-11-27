@@ -25,6 +25,17 @@ Then install lgtm:
 
 For Windows, macOS or Linux, you can download a binary release [here](https://github.com/dennishammarstrand/lgtm/releases/latest). Unpack the archive and put `lgtm` (`lgtm.exe` on Windows) somewhere on your `PATH`.
 
+### Updating
+
+lgtm checks for a new release once a day and shows `↑ v0.2.0 available` in the header when there is one. Update with the tool you installed it with:
+
+| Installed with | Update with |
+| --- | --- |
+| Homebrew | `brew upgrade lgtm` |
+| Scoop | `scoop update lgtm` |
+| Go | `go install github.com/dennishammarstrand/lgtm@latest` |
+| `.deb` / `.rpm` / binary | download the new release |
+
 ## Usage
 
 ```sh

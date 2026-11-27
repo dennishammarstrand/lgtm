@@ -110,6 +110,10 @@ type model struct {
 	refetch   bool          // notifications changed while a fetch was in flight
 	status    string
 	statusErr bool
+
+	latestVersion   string
+	versionChecked  time.Time
+	versionChecking bool
 }
 
 type (
@@ -144,10 +148,11 @@ type (
 func newModel(interval time.Duration, query string, showMine bool) model {
 	st, _ := loadState()
 	return model{side: 'R', interval: interval, query: query, showMine: showMine, diffs: map[string]*diffEntry{}, st: st,
-		collapsed: map[string]bool{}, selected: map[string]bool{}, split: st.SplitDiff, wrap: !st.NoWrap, fetching: true}
+		collapsed: map[string]bool{}, selected: map[string]bool{}, split: st.SplitDiff, wrap: !st.NoWrap, fetching: true,
+		latestVersion: st.LatestVersion, versionChecked: st.VersionChecked}
 }
 
-func (m model) Init() tea.Cmd { return tea.Batch(m.fetchPRs(), m.checkNotifs()) }
+func (m model) Init() tea.Cmd { return tea.Batch(m.fetchPRs(), m.checkNotifs(), m.checkVersion()) }
 
 func (m model) tick() tea.Cmd {
 	return tea.Tick(max(m.interval, m.pollEvery), func(time.Time) tea.Msg { return tickMsg{} })
@@ -396,7 +401,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		return m, m.checkNotifs()
+		return m, tea.Batch(m.checkNotifs(), m.checkVersion())
+
+	case versionMsg:
+		return m.applyVersion(msg), nil
 
 	case notifMsg:
 		if msg.err != nil {
@@ -1414,6 +1422,13 @@ func (m model) viewHeader() string {
 		}
 		right = dimStyle.Render("updated " + updated.Format("15:04") + " ")
 	}
+	if updateAvailable(releaseVersion(), m.latestVersion) {
+		notice := newStyle.Render("↑ "+m.latestVersion+" available") + " "
+		if right != "" {
+			notice += dimStyle.Render("· ")
+		}
+		right = notice + right
+	}
 	if inPR {
 		meta := " " + dimStyle.Render(pr.Ref()+" · "+pr.Author.Login)
 		// Keep the right side; shorten the title when the line is too long.
@@ -1433,11 +1448,11 @@ func (m model) viewFooter() string {
 		if m.statusErr {
 			st = errStyle
 		}
-		return ansi.Truncate(" "+st.Render(m.status), m.width, "…")
+		return m.footerLine(st.Render(m.status))
 	}
 	if n := len(m.selected); n > 0 {
 		hints := fmt.Sprintf("%d selected: a approve all · c comment all · x request changes on all · R reviewers for all · space toggle · * same title · esc clear · ? help", n)
-		return ansi.Truncate(" "+okStyle.Render(hints), m.width, "…")
+		return m.footerLine(okStyle.Render(hints))
 	}
 	var hints string
 	switch m.focus {
@@ -1450,13 +1465,22 @@ func (m model) viewFooter() string {
 	case focusDiff:
 		if m.visual {
 			hints = "VISUAL · j/k extend · c comment · S suggest · esc cancel"
-			return ansi.Truncate(" "+selStyle.Render(hints), m.width, "…")
+			return m.footerLine(selStyle.Render(hints))
 		}
 		hints = "j/k line · V select · c comment · S suggest · D del draft · enter thread · tab side · n/N hunk · J/K file · s split · w wrap · h back · a approve · x changes"
-		return ansi.Truncate(" "+dimStyle.Render(hints+" · ? help"), m.width, "…")
+		return m.footerLine(dimStyle.Render(hints + " · ? help"))
 	}
 	hints += " · a approve · c comment · x changes · R reviewers · o web · r refresh · ? help · q quit"
-	return ansi.Truncate(" "+dimStyle.Render(hints), m.width, "…")
+	return m.footerLine(dimStyle.Render(hints))
+}
+
+// footerLine shows the hints or status on the left and the version at the
+// bottom right; the left side is shortened to make room.
+func (m model) footerLine(text string) string {
+	ver := dimStyle.Render(versionLabel()) + " "
+	left := ansi.Truncate(" "+text, max(m.width-lipgloss.Width(ver)-1, 0), "…")
+	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(ver), 1)
+	return ansi.Truncate(left+strings.Repeat(" ", gap)+ver, m.width, "")
 }
 
 func (m model) viewColumns() string {
