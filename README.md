@@ -21,7 +21,9 @@ Then install lgtm:
 | Debian / Ubuntu, Fedora | download the `.deb` or `.rpm` from [Releases](https://github.com/dennishammarstrand/lgtm/releases) |
 | Anything with Go | `go install github.com/dennishammarstrand/lgtm@latest` |
 
-Prebuilt archives for every platform are also on the [Releases](https://github.com/dennishammarstrand/lgtm/releases) page.
+### Binary releases
+
+For Windows, macOS or Linux, you can download a binary release [here](https://github.com/dennishammarstrand/lgtm/releases/latest). Unpack the archive and put `lgtm` (`lgtm.exe` on Windows) somewhere on your `PATH`.
 
 ## Usage
 
