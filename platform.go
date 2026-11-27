@@ -5,8 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-
-	"github.com/gen2brain/beeep"
+	"strings"
 )
 
 // stateDir is where lgtm keeps its state: $XDG_STATE_HOME, else %LOCALAPPDATA% on
@@ -24,8 +23,11 @@ func stateDir() string {
 	return filepath.Join(home, ".local", "state")
 }
 
-// openURL opens url in the default browser.
+// openURL opens an https URL in the default browser.
 func openURL(url string) {
+	if !strings.HasPrefix(url, "https://") {
+		return // only GitHub links; never hand a file path or other scheme to the OS
+	}
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -38,25 +40,4 @@ func openURL(url string) {
 	if cmd.Start() == nil {
 		go func() { _ = cmd.Wait() }()
 	}
-}
-
-// notify shows a desktop notification. On macOS it uses terminal-notifier when
-// installed (clicking opens the PR), else osascript; elsewhere beeep (D-Bus or
-// notify-send on Linux, a toast on Windows).
-func notify(title, subtitle, msg, url string) {
-	if runtime.GOOS != "darwin" {
-		beeep.AppName = "lgtm"
-		_ = beeep.Notify(title, subtitle+"\n"+msg, "")
-		return
-	}
-	if p, err := exec.LookPath("terminal-notifier"); err == nil {
-		_ = exec.Command(p, "-title", title, "-subtitle", subtitle, "-message", msg,
-			"-open", url, "-group", url, "-sound", "default").Run()
-		return
-	}
-	_ = exec.Command("osascript",
-		"-e", "on run argv",
-		"-e", `display notification (item 3 of argv) with title (item 1 of argv) subtitle (item 2 of argv) sound name "default"`,
-		"-e", "end run",
-		title, subtitle, msg).Run()
 }

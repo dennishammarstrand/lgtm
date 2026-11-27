@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"reflect"
 	"strings"
 	"unicode"
 
@@ -13,8 +15,10 @@ import (
 // carriage returns (Windows line endings) and shows other control characters,
 // including escape codes inside a file, as �. Printed raw, a carriage return sends
 // the cursor back to the start of the line and the rest overwrites the screen.
+// C1 controls (some terminals read U+009B as CSI) and bidi overrides, which can
+// make code read differently from what it does, are shown as � too.
 func cleanText(s string) string {
-	if !strings.ContainsFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\ufeff' }) {
+	if !strings.ContainsFunc(s, unsafeRune) {
 		return s
 	}
 	s = strings.ReplaceAll(s, "\r\n", "\n")
@@ -24,11 +28,60 @@ func cleanText(s string) string {
 			return r
 		case r == '\r', r == '\ufeff':
 			return -1
-		case r < 0x20, r == 0x7f:
+		case unsafeRune(r):
 			return '\ufffd'
 		}
 		return r
 	}, s)
+}
+
+func unsafeRune(r rune) bool {
+	return r < 0x20 || (r >= 0x7f && r <= 0x9f) || r == '\ufeff' ||
+		(r >= '\u202a' && r <= '\u202e') || (r >= '\u2066' && r <= '\u2069')
+}
+
+// decodeGitHub decodes a GitHub response and cleans every string in it, so text
+// from other people (titles, comments, paths, names) can't reach the terminal
+// with escape sequences, wherever it's later shown.
+func decodeGitHub(data []byte, v any) error {
+	if err := json.Unmarshal(data, v); err != nil {
+		return err
+	}
+	cleanStrings(reflect.ValueOf(v))
+	return nil
+}
+
+func cleanStrings(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Pointer, reflect.Interface:
+		if !v.IsNil() {
+			cleanStrings(v.Elem())
+		}
+	case reflect.Struct:
+		for i := range v.NumField() {
+			if v.Type().Field(i).IsExported() {
+				cleanStrings(v.Field(i))
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			return // raw JSON, decoded (and cleaned) separately
+		}
+		for i := range v.Len() {
+			cleanStrings(v.Index(i))
+		}
+	case reflect.Map:
+		for _, k := range v.MapKeys() {
+			e := reflect.New(v.Type().Elem()).Elem()
+			e.Set(v.MapIndex(k))
+			cleanStrings(e)
+			v.SetMapIndex(k, e)
+		}
+	case reflect.String:
+		if v.CanSet() {
+			v.SetString(cleanText(v.String()))
+		}
+	}
 }
 
 // joinsGraphemes reports runes that can merge with others into one displayed

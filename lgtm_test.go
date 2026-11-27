@@ -799,3 +799,50 @@ func TestReconcileNotifiesOnlyNewPRsAfterFirstRun(t *testing.T) {
 		t.Fatalf("re-requested PR should notify again, got %v", fresh)
 	}
 }
+
+func TestGitHubTextCantSendEscapeSequences(t *testing.T) {
+	type thread struct {
+		Path     string
+		DiffHunk string
+		Comments []*struct{ Body string }
+	}
+	var got struct {
+		Title   string
+		Threads []thread
+		Names   map[string]string
+		Raw     json.RawMessage
+	}
+	evil := `"a\u001b]52;c;Y3VybCBldmlsfHNo\u0007b\u009b31m\u202eevil\u2066"`
+	data := `{"Title":` + evil + `,"Threads":[{"Path":` + evil + `,"DiffHunk":` + evil + `,"Comments":[{"Body":` + evil + `}]}],"Names":{"x":` + evil + `},"Raw":{"k":1}}`
+	if err := decodeGitHub([]byte(data), &got); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{got.Title, got.Threads[0].Path, got.Threads[0].DiffHunk, got.Threads[0].Comments[0].Body, got.Names["x"]} {
+		if strings.ContainsFunc(s, unsafeRune) || !strings.HasPrefix(s, "a\ufffd]52") {
+			t.Errorf("escape codes, C1 controls and bidi overrides should be replaced: %q", s)
+		}
+	}
+	if string(got.Raw) != `{"k":1}` {
+		t.Errorf("raw JSON should be left for its own decode: %s", got.Raw)
+	}
+}
+
+func TestStateFileIsPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permissions")
+	}
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	dir := filepath.Dir(statePath())
+	if err := os.MkdirAll(dir, 0o755); err != nil { // as older versions left it
+		t.Fatal(err)
+	}
+	st, _ := loadState()
+	if err := st.save(); err != nil {
+		t.Fatal(err)
+	}
+	for p, want := range map[string]os.FileMode{dir: 0o700, statePath(): 0o600} {
+		if fi, err := os.Stat(p); err != nil || fi.Mode().Perm() != want {
+			t.Errorf("%s: want %o, got %v %v", p, want, fi.Mode().Perm(), err)
+		}
+	}
+}

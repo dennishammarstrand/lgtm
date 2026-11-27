@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -107,7 +106,7 @@ func fetchCandidates(ctx context.Context, pr PR, q string) ([]candidate, error) 
 			} `json:"repositoryOwner"`
 		} `json:"data"`
 	}
-	if err := json.Unmarshal(out, &resp); err != nil {
+	if err := decodeGitHub(out, &resp); err != nil {
 		return nil, fmt.Errorf("parse gh output: %w", err)
 	}
 	d := resp.Data

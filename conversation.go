@@ -142,13 +142,13 @@ func fetchConversations(ctx context.Context, prs []PR) (map[string]*conversation
 		var resp struct {
 			Data map[string]json.RawMessage `json:"data"`
 		}
-		if err := json.Unmarshal(raw, &resp); err != nil {
+		if err := decodeGitHub(raw, &resp); err != nil {
 			return nil, fmt.Errorf("parse gh output: %w", err)
 		}
 		var viewer struct {
 			Login string `json:"login"`
 		}
-		_ = json.Unmarshal(resp.Data["viewer"], &viewer)
+		_ = decodeGitHub(resp.Data["viewer"], &viewer)
 		for i := range chunk {
 			var p *struct {
 				URL           string `json:"url"`
@@ -173,7 +173,7 @@ func fetchConversations(ctx context.Context, prs []PR) (map[string]*conversation
 					Nodes []ghComment `json:"nodes"`
 				} `json:"reviews"`
 			}
-			if err := json.Unmarshal(resp.Data[fmt.Sprintf("p%d", i)], &p); err != nil || p == nil {
+			if err := decodeGitHub(resp.Data[fmt.Sprintf("p%d", i)], &p); err != nil || p == nil {
 				continue
 			}
 			c := &conversation{Viewer: viewer.Login}

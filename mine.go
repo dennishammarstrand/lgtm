@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -64,7 +63,7 @@ func fetchMine(ctx context.Context) ([]PR, error) {
 			} `json:"search"`
 		} `json:"data"`
 	}
-	if err := json.Unmarshal(out, &resp); err != nil {
+	if err := decodeGitHub(out, &resp); err != nil {
 		return nil, fmt.Errorf("parse gh output: %w", err)
 	}
 	var prs []PR

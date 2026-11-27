@@ -66,14 +66,18 @@ func loadState() (st *state, existed bool) {
 	return st, true
 }
 
+// save writes the state privately (it holds review drafts and private PR URLs).
 func (s *state) save() error {
 	p := statePath()
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	dir := filepath.Dir(p)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
+	_ = os.Chmod(dir, 0o700) // older versions created it world-readable
 	data, _ := json.MarshalIndent(s, "", "  ")
 	tmp := p + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	_ = os.Remove(tmp) // WriteFile keeps the mode of an existing file
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, p)

@@ -546,7 +546,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) setStatus(s string, isErr bool) { m.status, m.statusErr = s, isErr }
+func (m *model) setStatus(s string, isErr bool) { m.status, m.statusErr = cleanText(s), isErr }
 
 func (m model) applyPRs(msg prsMsg) (tea.Model, tea.Cmd) {
 	m.fetching = false

@@ -82,7 +82,7 @@ func fetchReviewRequests(ctx context.Context, query string) ([]PR, error) {
 		return nil, err
 	}
 	var prs []PR
-	if err := json.Unmarshal(out, &prs); err != nil {
+	if err := decodeGitHub(out, &prs); err != nil {
 		return nil, fmt.Errorf("parse gh output: %w", err)
 	}
 	sort.SliceStable(prs, func(i, j int) bool { return prs[i].UpdatedAt.After(prs[j].UpdatedAt) })
@@ -159,16 +159,16 @@ func fetchStillPending(ctx context.Context, urls []string) ([]PR, error) {
 		var resp struct {
 			Data map[string]json.RawMessage `json:"data"`
 		}
-		if err := json.Unmarshal(out, &resp); err != nil {
+		if err := decodeGitHub(out, &resp); err != nil {
 			return nil, fmt.Errorf("parse gh output: %w", err)
 		}
 		var viewer struct {
 			Login string `json:"login"`
 		}
-		_ = json.Unmarshal(resp.Data["viewer"], &viewer)
+		_ = decodeGitHub(resp.Data["viewer"], &viewer)
 		for i := range chunk {
 			var t *trackedPR
-			if err := json.Unmarshal(resp.Data[fmt.Sprintf("p%d", i)], &t); err != nil || t == nil {
+			if err := decodeGitHub(resp.Data[fmt.Sprintf("p%d", i)], &t); err != nil || t == nil {
 				continue
 			}
 			if t.State != "OPEN" || t.ViewerLatestReview == nil {
