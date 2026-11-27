@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -234,6 +235,9 @@ func TestPickerListsCurrentReviewersFirstForReRequest(t *testing.T) {
 }
 
 func TestCheckNotificationsReadsStatusDespiteGhExitCode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fake gh is a shell script")
+	}
 	bin := t.TempDir()
 	fake := `#!/bin/sh
 case "$*" in
