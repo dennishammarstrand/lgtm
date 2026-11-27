@@ -80,7 +80,9 @@ Two screens of two panes: **PRs | Comments**, then **Files | Diff**. `l` goes PR
 | `R` | request reviewers: suggestions, or search people/teams; `tab` selects, `ctrl+s` requests. Re-requests reviewers who already reviewed; `Copilot` requests a Copilot review. With a selection it requests the chosen reviewers on every selected PR (suggestions and search cover all their repos) |
 | `o` | open in browser |
 | `U` | update lgtm when a new version is available (asks first) |
-| `r` | refresh, `?` help, `q` quit |
+| `r` | refresh |
+| `?` | help |
+| `q` | quit |
 
 `●` marks PRs you haven't opened yet.
 
