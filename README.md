@@ -48,7 +48,7 @@ lgtm -interval 2m         # check less often (GitHub sets the minimum, usually 6
 lgtm -query "--review-requested=@me --owner=my-org"
 lgtm -mine=false          # hide your own PRs
 lgtm -theme dracula       # syntax theme (chroma): catppuccin-mocha (default), github-dark, tokyonight-night, …
-lgtm check                # poll once, notify, exit (for a scheduler, see below)
+lgtm check                # poll once, notify, exit (for a scheduler)
 lgtm -version
 ```
 
@@ -102,66 +102,7 @@ lgtm watches your GitHub notifications with a conditional request (`If-None-Matc
 
 Desktop notifications use Notification Center on macOS (install `terminal-notifier` to open the PR by clicking the notification), the desktop notification service on Linux, and toasts on Windows.
 
-The TUI notifies while it's running. To also get notified when it's closed, run `lgtm check` on a schedule. Both share the same state, so each request is only notified once. The very first run records the existing requests without notifying. State lives in `$XDG_STATE_HOME/lgtm` (default `~/.local/state/lgtm`), or `%LOCALAPPDATA%\lgtm` on Windows.
-
-### macOS (launchd)
-
-`~/Library/LaunchAgents/lgtm.check.plist` (adjust the path to `lgtm`, see `which lgtm`):
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>lgtm.check</string>
-  <key>ProgramArguments</key>
-  <array><string>/opt/homebrew/bin/lgtm</string><string>check</string></array>
-  <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
-  <key>StartInterval</key><integer>120</integer>
-  <key>StandardErrorPath</key><string>/tmp/lgtm.err</string>
-</dict>
-</plist>
-```
-
-```sh
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/lgtm.check.plist
-```
-
-### Linux (systemd)
-
-`~/.config/systemd/user/lgtm-check.service`:
-
-```ini
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/lgtm check
-```
-
-`~/.config/systemd/user/lgtm-check.timer`:
-
-```ini
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=2min
-
-[Install]
-WantedBy=timers.target
-```
-
-```sh
-systemctl --user enable --now lgtm-check.timer
-```
-
-Adjust `ExecStart` to where `lgtm` is installed (`which lgtm`).
-
-### Windows (Task Scheduler)
-
-```powershell
-schtasks /create /tn "lgtm check" /sc minute /mo 2 /tr "lgtm check"
-```
-
-A console window flashes briefly each time it runs.
+lgtm notifies while it's running. To get notified when it's closed, run `lgtm check` from a scheduler such as launchd, systemd or Task Scheduler: it polls once and exits. Both share the same state, so each request is only notified once. The very first run records the existing requests without notifying. State lives in `$XDG_STATE_HOME/lgtm` (default `~/.local/state/lgtm`), or `%LOCALAPPDATA%\lgtm` on Windows.
 
 ## Building from source
 
