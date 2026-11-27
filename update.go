@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -71,4 +76,116 @@ func versionLabel() string {
 		return v
 	}
 	return "dev"
+}
+
+// updater says how this copy of lgtm was installed and how to update it.
+type updater struct {
+	how     string   // "Homebrew", "Scoop", "Go" or "" for a manual download
+	command []string // run after quitting; nil when lgtm can't run it itself
+	hint    string   // what to run yourself when command is nil
+}
+
+func (u updater) label() string { return strings.Join(append([]string{}, u.command...), " ") }
+
+// detectUpdater works out the install method from where the binary lives.
+func detectUpdater(exe string) updater {
+	p := strings.ToLower(strings.ReplaceAll(exe, `\`, "/"))
+	gobin := os.Getenv("GOBIN")
+	if gobin == "" {
+		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			home, _ := os.UserHomeDir()
+			gopath = filepath.Join(home, "go")
+		}
+		gobin = filepath.Join(strings.Split(gopath, string(os.PathListSeparator))[0], "bin")
+	}
+	switch {
+	case strings.Contains(p, "/caskroom/lgtm/") || strings.Contains(p, "/cellar/lgtm/"):
+		return updater{how: "Homebrew", command: []string{"brew", "upgrade", "lgtm"}}
+	case strings.Contains(p, "/scoop/apps/lgtm/"):
+		// Scoop won't replace an app that is running, so this has to happen after quitting.
+		return updater{how: "Scoop", hint: "scoop update lgtm"}
+	case strings.EqualFold(filepath.Clean(filepath.Dir(exe)), filepath.Clean(gobin)):
+		return updater{how: "Go", command: []string{"go", "install", "github.com/" + releasesRepo + "@latest"}}
+	}
+	return updater{}
+}
+
+// currentUpdater is a variable so tests can replace it.
+var currentUpdater = func() updater {
+	exe, err := os.Executable()
+	if err != nil {
+		return updater{}
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	return detectUpdater(exe)
+}
+
+// startUpdate is the U key: it asks before doing anything.
+func (m model) startUpdate() (model, tea.Cmd) {
+	if !updateAvailable(releaseVersion(), m.latestVersion) {
+		m.setStatus("lgtm "+versionLabel()+" is the latest version", false)
+		return m, nil
+	}
+	m.confirmUpdate = true
+	return m, nil
+}
+
+// confirmUpdatePrompt is shown in the footer while waiting for y.
+func (m model) confirmUpdatePrompt() string {
+	u := currentUpdater()
+	switch {
+	case u.command != nil:
+		return fmt.Sprintf("Update to %s with `%s`? lgtm restarts when it's done · y update · any other key cancels", m.latestVersion, u.label())
+	case u.hint != "":
+		return fmt.Sprintf("%s can't update lgtm while it runs: quit (q) and run `%s` · any key closes", u.how, u.hint)
+	}
+	return fmt.Sprintf("Open the %s release page to download it? y open · any other key cancels", m.latestVersion)
+}
+
+func (m model) answerUpdate(key string) (tea.Model, tea.Cmd) {
+	m.confirmUpdate = false
+	if key != "y" {
+		return m, nil
+	}
+	u := currentUpdater()
+	switch {
+	case u.command != nil:
+		m.runAfterQuit = u.command
+		return m, tea.Quit
+	case u.hint != "":
+		return m, nil
+	}
+	url := "https://github.com/" + releasesRepo + "/releases/latest"
+	return m, func() tea.Msg { openURL(url); return nil }
+}
+
+// runUpdate runs the update command in the terminal, then starts the new lgtm
+// with the same arguments.
+func runUpdate(command []string) error {
+	fmt.Printf("Updating lgtm: %s\n", strings.Join(command, " "))
+	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("update failed: %w", err)
+	}
+	// Start lgtm the way it was started: Homebrew's link or Go's bin now point at
+	// the new version, while the old binary itself may be gone.
+	self, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		fmt.Println("Updated. Start lgtm again to use the new version.")
+		return nil
+	}
+	restart := exec.Command(self, os.Args[1:]...)
+	restart.Stdin, restart.Stdout, restart.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := restart.Run(); err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			os.Exit(exit.ExitCode())
+		}
+		return err
+	}
+	return nil
 }

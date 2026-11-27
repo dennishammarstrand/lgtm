@@ -4,6 +4,10 @@ A terminal UI for GitHub pull request reviews. Get notified when someone request
 
 Works on macOS, Linux and Windows.
 
+![Review requests and your own PRs, with the comments of the selected PR](docs/screenshot-prs.png)
+
+![Side-by-side diff with a review thread and a draft comment under their lines](docs/screenshot-diff.png)
+
 ## Install
 
 lgtm uses the [GitHub CLI](https://cli.github.com) for everything, so install it and log in first:
@@ -27,7 +31,7 @@ For Windows, macOS or Linux, you can download a binary release [here](https://gi
 
 ### Updating
 
-lgtm checks for a new release once a day and shows `↑ v0.2.0 available` in the header when there is one. Update with the tool you installed it with:
+lgtm checks for a new release once a day and shows `↑ v0.2.0 available` in the header when there is one. Press `U` to update: lgtm asks first, then runs `brew upgrade lgtm` or `go install …@latest` and restarts itself. Scoop can't update a running app, so on Windows it tells you to quit and run `scoop update lgtm`; for a downloaded binary it opens the release page. Or update with the tool you installed it with:
 
 | Installed with | Update with |
 | --- | --- |
@@ -75,6 +79,7 @@ Two screens of two panes: **PRs | Comments**, then **Files | Diff**. `l` goes PR
 | `space` / `*` | in the PR list: select a PR / every review request with the same title (e.g. one change across many repos); `esc` clears |
 | `R` | request reviewers: suggestions, or search people/teams; `tab` selects, `ctrl+s` requests. Re-requests reviewers who already reviewed; `Copilot` requests a Copilot review. With a selection it requests the chosen reviewers on every selected PR (suggestions and search cover all their repos) |
 | `o` | open in browser |
+| `U` | update lgtm when a new version is available (asks first) |
 | `r` | refresh, `?` help, `q` quit |
 
 `●` marks PRs you haven't opened yet.
@@ -163,6 +168,7 @@ A console window flashes briefly each time it runs.
 ```sh
 make install              # builds into ~/.local/bin (override with BIN_DIR=...)
 make test
+make screenshots          # regenerate the README screenshots from demo data
 ```
 
 Releases are built by [GoReleaser](https://goreleaser.com) when a `v*` tag is pushed.

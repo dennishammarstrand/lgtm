@@ -846,3 +846,55 @@ func TestStateFileIsPrivate(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateFromTheApp(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	t.Setenv("GOBIN", "/home/me/go/bin")
+	for exe, want := range map[string]string{
+		"/opt/homebrew/Caskroom/lgtm/0.2.1/lgtm":              "Homebrew",
+		"/home/linuxbrew/.linuxbrew/Caskroom/lgtm/0.2.1/lgtm": "Homebrew",
+		`C:\Users\me\scoop\apps\lgtm\current\lgtm.exe`:        "Scoop",
+		"/home/me/go/bin/lgtm":                                "Go",
+		"/usr/bin/lgtm":                                       "",
+		"/home/me/Downloads/lgtm_0.2.1_linux_amd64/lgtm":      "",
+	} {
+		if got := detectUpdater(exe).how; got != want {
+			t.Errorf("%s: got %q, want %q", exe, got, want)
+		}
+	}
+
+	defer func(v string, u func() updater) { version, currentUpdater = v, u }(version, currentUpdater)
+	currentUpdater = func() updater { return detectUpdater("/opt/homebrew/Caskroom/lgtm/0.2.1/lgtm") }
+	version = "0.2.1"
+	m := newModel(time.Minute, "", false)
+	m.width, m.latestVersion = 160, "v0.3.0"
+	key := func(k string) tea.Cmd {
+		nm, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+		m = nm.(model)
+		return cmd
+	}
+	key("U")
+	if f := ansi.Strip(m.viewFooter()); !strings.Contains(f, "Update to v0.3.0 with `brew upgrade lgtm`?") {
+		t.Fatalf("U should ask first: %q", f)
+	}
+	key("n")
+	if m.confirmUpdate || m.runAfterQuit != nil {
+		t.Fatal("any other key should cancel")
+	}
+	key("U")
+	key("y")
+	if strings.Join(m.runAfterQuit, " ") != "brew upgrade lgtm" {
+		t.Errorf("y should quit and leave the update to main, got %v", m.runAfterQuit)
+	}
+
+	currentUpdater = func() updater { return detectUpdater(`C:\Users\me\scoop\apps\lgtm\current\lgtm.exe`) }
+	m.runAfterQuit = nil
+	key("U")
+	if f := ansi.Strip(m.viewFooter()); !strings.Contains(f, "quit (q) and run `scoop update lgtm`") {
+		t.Errorf("Scoop should explain how to update: %q", f)
+	}
+	key("y")
+	if m.runAfterQuit != nil {
+		t.Error("lgtm can't run Scoop's update itself")
+	}
+}

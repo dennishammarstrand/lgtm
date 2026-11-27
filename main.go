@@ -54,9 +54,16 @@ func main() {
 	}
 
 	p := tea.NewProgram(newModel(*interval, *query, *mine), tea.WithAltScreen(), tea.WithReportFocus())
-	if _, err := p.Run(); err != nil {
+	final, err := p.Run()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if fm, ok := final.(model); ok && fm.runAfterQuit != nil {
+		if err := runUpdate(fm.runAfterQuit); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 }
 

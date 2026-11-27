@@ -114,6 +114,8 @@ type model struct {
 	latestVersion   string
 	versionChecked  time.Time
 	versionChecking bool
+	confirmUpdate   bool     // waiting for y after U
+	runAfterQuit    []string // update command main runs once the TUI has exited
 }
 
 type (
@@ -801,10 +803,15 @@ func (m model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.jumpTop()
 		}
 	}
+	if m.confirmUpdate {
+		return m.answerUpdate(key)
+	}
 
 	switch key {
 	case "ctrl+c", "q":
 		return m, tea.Quit
+	case "U":
+		return m.startUpdate()
 	case "?":
 		m.help = true
 		return m, nil
@@ -1423,7 +1430,7 @@ func (m model) viewHeader() string {
 		right = dimStyle.Render("updated " + updated.Format("15:04") + " ")
 	}
 	if updateAvailable(releaseVersion(), m.latestVersion) {
-		notice := newStyle.Render("↑ "+m.latestVersion+" available") + " "
+		notice := newStyle.Render("↑ "+m.latestVersion+" available") + dimStyle.Render(" · U update") + " "
 		if right != "" {
 			notice += dimStyle.Render("· ")
 		}
@@ -1443,6 +1450,9 @@ func (m model) viewHeader() string {
 }
 
 func (m model) viewFooter() string {
+	if m.confirmUpdate {
+		return m.footerLine(newStyle.Render(m.confirmUpdatePrompt()))
+	}
 	if m.status != "" {
 		st := okStyle
 		if m.statusErr {
@@ -1893,6 +1903,7 @@ func (m model) viewHelp() string {
 		{"o", "open PR in browser"},
 		{"", ""},
 		{"r", "refresh now"},
+		{"U", "update lgtm, when a new version is available"},
 		{"? / q", "close help / quit"},
 	}
 	var b strings.Builder
