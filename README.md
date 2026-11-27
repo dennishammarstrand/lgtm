@@ -47,12 +47,29 @@ lgtm                      # TUI, checks for changes every minute
 lgtm -interval 2m         # check less often (GitHub sets the minimum, usually 60s)
 lgtm -query "--review-requested=@me --owner=my-org"
 lgtm -mine=false          # hide your own PRs
-lgtm -theme dracula       # syntax theme (chroma): catppuccin-mocha (default), github-dark, tokyonight-night, …
+lgtm -notify=false        # no desktop notifications
+lgtm -theme dracula       # syntax theme for diffs, see Configuration
 lgtm check                # poll once, notify, exit (for a scheduler)
 lgtm -version
 ```
 
 Use a terminal with true colour and a font with box-drawing characters (most modern terminals, including Windows Terminal).
+
+## Configuration
+
+To change the defaults without passing flags every time, create `~/.config/lgtm/config.yml` (`$XDG_CONFIG_HOME/lgtm/config.yml` if set, `%APPDATA%\lgtm\config.yml` on Windows, or any path in `$LGTM_CONFIG`). Every setting is optional; these are the defaults:
+
+```yaml
+notifications: true             # desktop notifications for review requests and replies
+interval: 1m                    # how often to check for changes
+query: "--review-requested=@me" # extra `gh search prs` flags selecting the PRs to watch
+mine: true                      # also list your own open PRs
+theme: catppuccin-mocha         # syntax theme for diffs
+```
+
+Flags override the file. `lgtm check` uses it too, and `lgtm -help` shows where lgtm looks for it.
+
+`theme` colours the code in diffs; the rest of the UI follows your terminal's colours. Any [Chroma style](https://xyproto.github.io/splash/docs/) works (that page previews them all), for example `dracula`, `github-dark`, `nord`, `gruvbox`, `tokyonight-night` or, for light terminals, `catppuccin-latte` and `github`. An unknown name lists the valid ones.
 
 ## Layout and keys
 

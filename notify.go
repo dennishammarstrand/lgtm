@@ -129,6 +129,18 @@ func saveDiffPrefs(split, wrap bool) {
 	_ = st.save()
 }
 
+// notificationsOn is the -notify flag (or the config's notifications setting).
+var notificationsOn = true
+
+// sendNotification is a variable so tests don't show real notifications.
+var sendNotification = desktopNotify
+
+func notify(title, subtitle, msg, url string) {
+	if notificationsOn {
+		sendNotification(title, subtitle, msg, url)
+	}
+}
+
 func notifyNew(prs []PR) {
 	switch {
 	case len(prs) == 0:

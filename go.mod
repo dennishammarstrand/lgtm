@@ -10,7 +10,9 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.10
 	github.com/gen2brain/beeep v0.12.0
 	github.com/mattn/go-runewidth v0.0.31
+	github.com/muesli/termenv v0.16.0
 	github.com/rivo/uniseg v0.4.7
+	go.yaml.in/yaml/v3 v3.0.6
 	golang.org/x/mod v0.43.0
 )
 
@@ -34,7 +36,6 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect

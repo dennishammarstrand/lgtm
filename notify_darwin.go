@@ -2,9 +2,9 @@ package main
 
 import "os/exec"
 
-// notify uses terminal-notifier when installed (clicking opens the PR), else
+// desktopNotify uses terminal-notifier when installed (clicking opens the PR), else
 // osascript, which gets the text as arguments of a fixed script.
-func notify(title, subtitle, msg, url string) {
+func desktopNotify(title, subtitle, msg, url string) {
 	if p, err := exec.LookPath("terminal-notifier"); err == nil {
 		_ = exec.Command(p, "-title", title, "-subtitle", subtitle, "-message", msg,
 			"-open", url, "-group", url, "-sound", "default").Run()

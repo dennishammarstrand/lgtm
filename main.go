@@ -25,19 +25,31 @@ func versionString() string {
 }
 
 func main() {
+	cfg, err := loadConfig(configPath())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "lgtm: config:", err)
+		os.Exit(2)
+	}
 	showVersion := flag.Bool("version", false, "print the version and exit")
-	interval := flag.Duration("interval", time.Minute, "how often to check GitHub notifications for changes (GitHub may ask for longer)")
-	query := flag.String("query", defaultQuery, "extra `gh search prs` flags selecting the PRs to watch")
-	mine := flag.Bool("mine", true, "also list your own open PRs")
-	theme := flag.String("theme", "catppuccin-mocha", "chroma syntax theme for diffs, e.g. dracula, github-dark, tokyonight-night, monokai")
+	notifications := flag.Bool("notify", cfg.Notifications, "show desktop notifications")
+	interval := flag.Duration("interval", cfg.Interval, "how often to check GitHub notifications for changes (GitHub may ask for longer)")
+	query := flag.String("query", cfg.Query, "extra `gh search prs` flags selecting the PRs to watch")
+	mine := flag.Bool("mine", cfg.Mine, "also list your own open PRs")
+	theme := flag.String("theme", cfg.Theme, "chroma syntax theme for diffs, e.g. dracula, github-dark, tokyonight-night, monokai")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage:\n  lgtm [flags]        interactive TUI\n  lgtm [flags] check  poll once, notify about new review requests, exit (run it from launchd, systemd or Task Scheduler)\n\nFlags:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nThe defaults can be changed in %s; flags override it.\n", configPath())
 	}
 	flag.Parse()
 	if *showVersion {
 		fmt.Println("lgtm", versionString())
 		return
+	}
+	notificationsOn = *notifications
+	if err := checkTheme(*theme); err != nil {
+		fmt.Fprintln(os.Stderr, "lgtm:", err)
+		os.Exit(2)
 	}
 	syntaxTheme = styles.Get(*theme)
 

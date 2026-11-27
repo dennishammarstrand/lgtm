@@ -59,6 +59,6 @@ func powershell(script, toast string) *exec.Cmd {
 	return cmd
 }
 
-func notify(title, subtitle, msg, url string) {
+func desktopNotify(title, subtitle, msg, url string) {
 	_ = powershell(toastScript+toastShow, toastXML(title, subtitle, msg, url)).Run()
 }

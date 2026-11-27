@@ -898,3 +898,62 @@ func TestUpdateFromTheApp(t *testing.T) {
 		t.Error("lgtm can't run Scoop's update itself")
 	}
 }
+
+func TestConfigFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yml")
+	write := func(s string) {
+		if err := os.WriteFile(path, []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c, err := loadConfig(path); err != nil || c != defaultConfig() {
+		t.Fatalf("no file should mean the defaults: %+v %v", c, err)
+	}
+	write("notifications: false\ninterval: 2m\n")
+	c, err := loadConfig(path)
+	want := defaultConfig()
+	want.Notifications, want.Interval = false, 2*time.Minute
+	if err != nil || c != want {
+		t.Errorf("settings left out should keep their defaults: got %+v %v", c, err)
+	}
+	write("")
+	if c, err := loadConfig(path); err != nil || c != defaultConfig() {
+		t.Errorf("an empty file should mean the defaults: %+v %v", c, err)
+	}
+	write("notification: false\n")
+	if _, err := loadConfig(path); err == nil || !strings.Contains(err.Error(), "notification") {
+		t.Errorf("a misspelled key should be an error, got %v", err)
+	}
+	write("interval: soon\n")
+	if _, err := loadConfig(path); err == nil {
+		t.Error("an invalid interval should be an error")
+	}
+}
+
+func TestNotificationsCanBeTurnedOff(t *testing.T) {
+	defer func(on bool, send func(string, string, string, string)) {
+		notificationsOn, sendNotification = on, send
+	}(notificationsOn, sendNotification)
+	sent := 0
+	sendNotification = func(string, string, string, string) { sent++ }
+	notificationsOn = false
+	notifyNew([]PR{{URL: "u", Title: "t"}})
+	notifyReplies([]replyNote{{pr: PR{URL: "u"}, comment: comment{Author: "anna", Body: "ok"}}})
+	if sent != 0 {
+		t.Errorf("nothing should be sent with notifications off, sent %d", sent)
+	}
+	notificationsOn = true
+	notifyNew([]PR{{URL: "u", Title: "t"}})
+	if sent != 1 {
+		t.Errorf("notifications on should send, sent %d", sent)
+	}
+}
+
+func TestUnknownThemeListsTheValidOnes(t *testing.T) {
+	if err := checkTheme(defaultConfig().Theme); err != nil {
+		t.Errorf("the default theme should exist: %v", err)
+	}
+	if err := checkTheme("drakula"); err == nil || !strings.Contains(err.Error(), "dracula") {
+		t.Errorf("a misspelled theme should be an error listing the themes, got %v", err)
+	}
+}
