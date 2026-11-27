@@ -1,0 +1,74 @@
+version: 2
+
+project_name: lgtm
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+homebrew_casks:
+  - name: lgtm
+    homepage: https://github.com/dennishammarstrand/lgtm
+    description: Terminal UI for GitHub pull request reviews
+    license: MIT
+    dependencies:
+      - formula: gh
+    repository:
+      owner: dennishammarstrand
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    hooks:
+      post:
+        # The binary isn't signed by Apple; without this macOS refuses to run it.
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/lgtm"]
+          end
+
+scoops:
+  - name: lgtm
+    homepage: https://github.com/dennishammarstrand/lgtm
+    description: Terminal UI for GitHub pull request reviews
+    license: MIT
+    depends: [gh]
+    repository:
+      owner: dennishammarstrand
+      name: scoop-bucket
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+
+nfpms:
+  - package_name: lgtm
+    homepage: https://github.com/dennishammarstrand/lgtm
+    description: Terminal UI for GitHub pull request reviews
+    maintainer: Dennis Hammarstrand
+    license: MIT
+    formats: [deb, rpm]
+    recommends: [gh]
