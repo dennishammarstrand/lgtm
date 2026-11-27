@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.11.10
 	github.com/gen2brain/beeep v0.12.0
-	github.com/mattn/go-runewidth v0.0.27
+	github.com/mattn/go-runewidth v0.0.31
 	github.com/rivo/uniseg v0.4.7
 	golang.org/x/mod v0.43.0
 )
